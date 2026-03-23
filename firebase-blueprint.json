@@ -1,0 +1,159 @@
+{
+  "entities": {
+    "Company": {
+      "title": "Company",
+      "description": "A company within the group (e.g., MPS, MS Service)",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "The name of the company" },
+        "description": { "type": "string", "description": "A brief description" }
+      },
+      "required": ["name"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "An industrial project (reconstruction, maintenance, etc.)",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Project name" },
+        "companyId": { "type": "string", "description": "ID of the company owning the project" },
+        "client": { "type": "string", "description": "Client name" },
+        "status": { "type": "string", "enum": ["Active", "Completed", "On Hold", "Cancelled"] },
+        "startDate": { "type": "string", "format": "date" },
+        "endDate": { "type": "string", "format": "date" },
+        "bdi": {
+          "type": "object",
+          "properties": {
+            "centralAdmin": { "type": "number" },
+            "risk": { "type": "number" },
+            "guarantees": { "type": "number" },
+            "financialExpenses": { "type": "number" },
+            "taxes": { "type": "number" },
+            "profit": { "type": "number" }
+          }
+        }
+      },
+      "required": ["name", "companyId", "status"]
+    },
+    "WBS": {
+      "title": "WBS",
+      "description": "Work Breakdown Structure element",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "WBS element name" },
+        "projectId": { "type": "string", "description": "Project ID" },
+        "parentId": { "type": "string", "description": "Parent WBS ID for hierarchy" },
+        "description": { "type": "string" }
+      },
+      "required": ["name", "projectId"]
+    },
+    "Resource": {
+      "title": "Resource",
+      "description": "A pre-defined resource (labor, EPI, etc.) with a unit cost",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "category": { "type": "string" },
+        "unit": { "type": "string" },
+        "unitCost": { "type": "number" },
+        "companyId": { "type": "string" }
+      },
+      "required": ["name", "category", "unit", "unitCost", "companyId"]
+    },
+    "BudgetLine": {
+      "title": "Budget Line",
+      "description": "A line item in the project budget",
+      "type": "object",
+      "properties": {
+        "description": { "type": "string" },
+        "unit": { "type": "string" },
+        "quantity": { "type": "number" },
+        "unitCost": { "type": "number" },
+        "totalCost": { "type": "number" },
+        "categoryId": { "type": "string" },
+        "wbsId": { "type": "string" },
+        "projectId": { "type": "string" },
+        "companyId": { "type": "string" },
+        "overtimeHours": { "type": "number" },
+        "overtimePercent": { "type": "number" },
+        "resourceId": { "type": "string" }
+      },
+      "required": ["description", "quantity", "unitCost", "projectId", "companyId"]
+    },
+    "ActualCost": {
+      "title": "Actual Cost",
+      "description": "A real cost incurred in the project",
+      "type": "object",
+      "properties": {
+        "description": { "type": "string" },
+        "amount": { "type": "number" },
+        "date": { "type": "string", "format": "date" },
+        "vendor": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "wbsId": { "type": "string" },
+        "projectId": { "type": "string" },
+        "companyId": { "type": "string" },
+        "documentRef": { "type": "string" },
+        "lastModifiedBy": { "type": "string" }
+      },
+      "required": ["amount", "date", "projectId", "companyId"]
+    },
+    "Measurement": {
+      "title": "Measurement",
+      "description": "Billing measurement for the client",
+      "type": "object",
+      "properties": {
+        "projectId": { "type": "string" },
+        "companyId": { "type": "string" },
+        "number": { "type": "number" },
+        "amount": { "type": "number" },
+        "billingDate": { "type": "string", "format": "date" },
+        "expectedPaymentDate": { "type": "string", "format": "date" },
+        "actualPaymentDate": { "type": "string", "format": "date" },
+        "status": { "type": "string", "enum": ["Planned", "Billed", "Received"] }
+      },
+      "required": ["projectId", "amount", "status"]
+    },
+    "ScheduleTask": {
+      "title": "Schedule Task",
+      "description": "A task in the project schedule",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "projectId": { "type": "string" },
+        "wbsId": { "type": "string" },
+        "startDate": { "type": "string", "format": "date" },
+        "endDate": { "type": "string", "format": "date" },
+        "duration": { "type": "number" },
+        "dependencies": { "type": "array", "items": { "type": "string" } },
+        "physicalProgress": { "type": "number", "description": "0 to 100" },
+        "plannedValue": { "type": "number" },
+        "earnedValue": { "type": "number" },
+        "actualCost": { "type": "number" }
+      },
+      "required": ["name", "projectId", "startDate", "endDate"]
+    },
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "User profile and permissions",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["Admin", "Engineering", "Finance", "Executive"] },
+        "companyAccess": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["email", "role"]
+    }
+  },
+  "firestore": {
+    "/companies/{companyId}": { "schema": "Company", "description": "Companies in the group" },
+    "/projects/{projectId}": { "schema": "Project", "description": "Industrial projects" },
+    "/wbs/{wbsId}": { "schema": "WBS", "description": "WBS elements for all projects" },
+    "/budgetLines/{lineId}": { "schema": "BudgetLine", "description": "Budget lines for all projects" },
+    "/resources/{resourceId}": { "schema": "Resource", "description": "Pre-defined resources catalog" },
+    "/actualCosts/{costId}": { "schema": "ActualCost", "description": "Actual costs for all projects" },
+    "/measurements/{measurementId}": { "schema": "Measurement", "description": "Measurements for all projects" },
+    "/scheduleTasks/{taskId}": { "schema": "ScheduleTask", "description": "Schedule tasks for all projects" },
+    "/users/{userId}": { "schema": "UserProfile", "description": "User profiles" }
+  }
+}

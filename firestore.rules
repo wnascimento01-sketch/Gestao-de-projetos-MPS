@@ -1,0 +1,138 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    // Collection: companies
+    // Document ID: auto-generated
+    // Fields: name (string), description (string)
+    //
+    // Collection: projects
+    // Document ID: auto-generated
+    // Fields: name (string), companyId (string), client (string), status (string), startDate (string), endDate (string), bdi (map)
+    //
+    // Collection: projects/{projectId}/wbs
+    // Document ID: auto-generated
+    // Fields: name (string), projectId (string), parentId (string), description (string)
+    //
+    // Collection: projects/{projectId}/budget
+    // Document ID: auto-generated
+    // Fields: description (string), unit (string), quantity (number), unitCost (number), totalCost (number), categoryId (string), wbsId (string), projectId (string), companyId (string)
+    //
+    // Collection: projects/{projectId}/actualCosts
+    // Document ID: auto-generated
+    // Fields: description (string), amount (number), date (string), vendor (string), categoryId (string), wbsId (string), projectId (string), companyId (string), documentRef (string), lastModifiedBy (string)
+    //
+    // Collection: projects/{projectId}/measurements
+    // Document ID: auto-generated
+    // Fields: projectId (string), companyId (string), number (number), amount (number), billingDate (string), expectedPaymentDate (string), actualPaymentDate (string), status (string)
+    //
+    // Collection: projects/{projectId}/schedule
+    // Document ID: auto-generated
+    // Fields: name (string), projectId (string), wbsId (string), startDate (string), endDate (string), duration (number), dependencies (list), physicalProgress (number), plannedValue (number), earnedValue (number), actualCost (number)
+    //
+    // Collection: resources
+    // Document ID: auto-generated
+    // Fields: name (string), category (string), unit (string), unitCost (number), companyId (string)
+    //
+    // Collection: users
+    // Document ID: userId
+    // Fields: email (string), role (string), companyAccess (list)
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      return isAuthenticated() &&
+        ((exists(userPath) && get(userPath).data.role == 'Admin') ||
+        (request.auth.token.email == "wnascimento01@yahoo.com.br" && request.auth.token.email_verified == true));
+    }
+
+    function isFinance() {
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      return isAuthenticated() && exists(userPath) && get(userPath).data.role == 'Finance';
+    }
+
+    function isEngineering() {
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      return isAuthenticated() && exists(userPath) && get(userPath).data.role == 'Engineering';
+    }
+
+    function isExecutive() {
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      return isAuthenticated() && exists(userPath) && get(userPath).data.role == 'Executive';
+    }
+
+    function hasCompanyAccess(companyId) {
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      return isAdmin() || (exists(userPath) && companyId in get(userPath).data.companyAccess);
+    }
+
+    function isValidString(val, min, max) {
+      return val is string && val.size() >= min && val.size() <= max;
+    }
+
+    function isValidNumber(val, min, max) {
+      return val is number && val >= min && val <= max;
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+    }
+
+    match /companies/{companyId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    match /projects/{projectId} {
+      allow read: if isAuthenticated() && hasCompanyAccess(resource.data.companyId);
+      allow create: if isAdmin() || isEngineering();
+      allow update: if isAdmin() || isEngineering() || isFinance();
+      allow delete: if isAdmin();
+    }
+
+    match /wbs/{wbsId} {
+      allow read: if isAuthenticated() && hasCompanyAccess(resource.data.companyId);
+      allow write: if isAdmin() || isEngineering();
+    }
+
+    match /budgetLines/{lineId} {
+      allow read: if isAuthenticated() && hasCompanyAccess(resource.data.companyId);
+      allow write: if isAdmin() || isEngineering();
+    }
+
+    match /resources/{resourceId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || isEngineering();
+    }
+
+    match /actualCosts/{costId} {
+      allow read: if isAuthenticated() && hasCompanyAccess(resource.data.companyId);
+      allow write: if isAdmin() || isFinance();
+    }
+
+    match /measurements/{measurementId} {
+      allow read: if isAuthenticated() && hasCompanyAccess(resource.data.companyId);
+      allow write: if isAdmin() || isFinance();
+    }
+
+    match /scheduleTasks/{taskId} {
+      allow read: if isAuthenticated() && hasCompanyAccess(resource.data.companyId);
+      allow write: if isAdmin() || isEngineering();
+    }
+  }
+}
